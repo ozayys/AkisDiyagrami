@@ -12,13 +12,13 @@ from ..core.storage import save_node
 logger = logging.getLogger(__name__)
 
 
-def should_continue(state: CrawlerState) -> str:
+def should_continue(state: dict) -> str:
     """Determine if crawling should continue"""
-    if state.total_crawled >= state.max_pages:
-        logger.info(f"Reached max pages limit: {state.max_pages}")
+    if state.get('total_crawled', 0) >= state.get('max_pages', 10):
+        logger.info(f"Reached max pages limit: {state.get('max_pages')}")
         return "clean"
     
-    if not state.to_visit:
+    if not state.get('to_visit', []):
         logger.info("No more URLs to visit")
         return "clean"
     
@@ -76,7 +76,16 @@ class CrawlerPipeline:
         
         # Run the workflow
         try:
-            final_state = self.workflow.invoke(initial_state)
+            # Convert to dict for LangGraph
+            state_dict = initial_state.model_dump()
+            final_state_dict = self.workflow.invoke(state_dict)
+            
+            # Convert visited_urls back to set if needed
+            if 'visited_urls' in final_state_dict and isinstance(final_state_dict['visited_urls'], list):
+                final_state_dict['visited_urls'] = set(final_state_dict['visited_urls'])
+            
+            # Convert back to CrawlerState
+            final_state = CrawlerState(**final_state_dict)
             logger.info(f"Crawl completed: {final_state.total_crawled} pages crawled")
             return final_state
         except Exception as e:
@@ -93,11 +102,16 @@ class CrawlerPipeline:
             max_pages=max_pages
         )
         
-        logger.info(f"Starting crawl with streaming: {start_url}")
+        logger.info(f"Starting streaming crawl: {start_url}")
         
-        # Stream the workflow execution
+        # Run the workflow with streaming
         try:
-            for state in self.workflow.stream(initial_state):
+            # Convert to dict for LangGraph
+            state_dict = initial_state.model_dump()
+            for state in self.workflow.stream(state_dict):
+                # Convert visited_urls back to set if needed
+                if 'visited_urls' in state and isinstance(state['visited_urls'], list):
+                    state['visited_urls'] = set(state['visited_urls'])
                 yield state
         except Exception as e:
             logger.error(f"Workflow streaming error: {str(e)}")

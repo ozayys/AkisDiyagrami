@@ -201,18 +201,28 @@ class DataExporter:
         return str(filepath)
 
 
-def save_node(state: CrawlerState) -> CrawlerState:
+def save_node(state: dict) -> dict:
     """LangGraph node for saving data"""
     exporter = DataExporter()
     
+    # Create a copy of state and ensure visited_urls is a set
+    state_copy = state.copy()
+    if 'visited_urls' in state_copy and isinstance(state_copy['visited_urls'], list):
+        state_copy['visited_urls'] = set(state_copy['visited_urls'])
+    
+    # Create a CrawlerState object from the dictionary for export functions
+    crawler_state = CrawlerState(**state_copy)
+    
     # Always save as JSON
-    json_path = exporter.export_to_json(state)
+    json_path = exporter.export_to_json(crawler_state)
     
     # Update state with export info
-    state.status = "complete"
-    if 'exports' not in state.metadata:
-        state.metadata['exports'] = {}
-    state.metadata['exports']['json'] = json_path
+    state['status'] = "complete"
+    if 'metadata' not in state:
+        state['metadata'] = {}
+    if 'exports' not in state['metadata']:
+        state['metadata']['exports'] = {}
+    state['metadata']['exports']['json'] = json_path
     
-    logger.info(f"Data saved. Total pages: {state.total_crawled}")
+    logger.info(f"Data saved. Total pages: {state.get('total_crawled', 0)}")
     return state
