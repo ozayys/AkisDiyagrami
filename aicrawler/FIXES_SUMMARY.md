@@ -35,6 +35,19 @@ workflow = StateGraph(CrawlerState)
 workflow = StateGraph(dict)
 ```
 
+### 5. 'list' object has no attribute 'add' Hatası
+**Problem:** `CrawlerState.model_dump()` metodu `visited_urls` set'ini list'e çeviriyor, ancak `fetch_node` fonksiyonunda set metodları (`.add()`) kullanılıyor.
+
+**Çözüm:** `fetch_node` fonksiyonunda visited_urls'in her zaman set olmasını sağlayan kod eklendi:
+```python
+# Ensure visited_urls is a set (it might come as a list from model_dump)
+if 'visited_urls' in state:
+    if isinstance(state['visited_urls'], list):
+        state['visited_urls'] = set(state['visited_urls'])
+else:
+    state['visited_urls'] = set()
+```
+
 ## Yapılan Değişiklikler
 
 1. **src/core/state.py:**
@@ -49,6 +62,7 @@ workflow = StateGraph(dict)
 
 3. **src/core/crawler.py:**
    - `fetch_node` tamamen dictionary-based state kullanır
+   - `visited_urls`'in her zaman set olmasını sağlar
    - Güvenli dictionary erişimi ile default değerler
 
 4. **src/core/cleaner.py:**
@@ -62,6 +76,7 @@ workflow = StateGraph(dict)
 
 - Tüm Python dosyaları başarıyla derlendi (syntax hataları yok)
 - LangGraph state yönetimi düzeltildi
+- visited_urls set/list dönüşümleri otomatik olarak yönetiliyor
 - Metadata attribute'u mevcut ve kullanılabilir
 - Python sürüm uyumluluğu sağlandı
 
@@ -70,5 +85,5 @@ workflow = StateGraph(dict)
 - LangGraph'ta `StateGraph(dict)` kullanılmalıdır
 - Node fonksiyonları dictionary state kullanmalıdır
 - State attribute'larına `state['key']` veya `state.get('key', default)` ile erişilmelidir
-- `visited_urls` set/list dönüşümleri otomatik olarak yönetilir
+- `visited_urls` her zaman set olarak tutulmalı, list olarak gelirse set'e çevrilmeli
 - CrawlerPipeline state'i dict ve CrawlerState arasında dönüştürür

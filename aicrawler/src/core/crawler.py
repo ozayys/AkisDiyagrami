@@ -111,8 +111,11 @@ def fetch_node(state: dict) -> dict:
         state['to_visit'] = state.get('to_visit', [])
         state['to_visit'].append((state['start_url'], 0))
     
-    # Initialize visited_urls as set if not exists
-    if 'visited_urls' not in state:
+    # Ensure visited_urls is a set (it might come as a list from model_dump)
+    if 'visited_urls' in state:
+        if isinstance(state['visited_urls'], list):
+            state['visited_urls'] = set(state['visited_urls'])
+    else:
         state['visited_urls'] = set()
     
     # Initialize pages and errors if not exists
