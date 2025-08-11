@@ -109,21 +109,20 @@ class HTMLCleaner:
         return metadata
 
 
-def clean_node(state: CrawlerState) -> CrawlerState:
+def clean_node(state: dict) -> dict:
     """LangGraph node for cleaning HTML content"""
     cleaner = HTMLCleaner()
     
-    for page in state.pages:
+    for page in state.get('pages', []):
         if page.raw_html and not page.cleaned_content:
-            # Clean the HTML
-            cleaned_content = cleaner.clean_html(page.raw_html)
-            page.cleaned_content = cleaned_content
+            # Clean the HTML content
+            page.cleaned_content = cleaner.clean_html(page.raw_html)
             
-            # Extract additional metadata
-            extra_metadata = cleaner.extract_metadata(page.raw_html)
-            page.metadata.update(extra_metadata)
+            # Extract metadata if not already done
+            if not page.metadata:
+                page.metadata = cleaner.extract_metadata(page.raw_html)
             
             logger.info(f"Cleaned content for: {page.url}")
     
-    state.status = "cleaning_complete"
+    state['status'] = "cleaning_complete"
     return state

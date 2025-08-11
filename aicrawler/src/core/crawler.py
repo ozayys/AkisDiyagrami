@@ -102,46 +102,61 @@ class WebCrawler:
         return unique_links
 
 
-def fetch_node(state: CrawlerState) -> CrawlerState:
+def fetch_node(state: dict) -> dict:
     """LangGraph node for fetching web pages"""
     crawler = WebCrawler()
     
     # Initialize with start URL if needed
-    if not state.to_visit and state.total_crawled == 0:
-        state.to_visit.append((state.start_url, 0))
+    if not state.get('to_visit', []) and state.get('total_crawled', 0) == 0:
+        state['to_visit'] = state.get('to_visit', [])
+        state['to_visit'].append((state['start_url'], 0))
+    
+    # Ensure visited_urls is a set (it might come as a list from model_dump)
+    if 'visited_urls' in state:
+        if isinstance(state['visited_urls'], list):
+            state['visited_urls'] = set(state['visited_urls'])
+    else:
+        state['visited_urls'] = set()
+    
+    # Initialize pages and errors if not exists
+    if 'pages' not in state:
+        state['pages'] = []
+    if 'errors' not in state:
+        state['errors'] = []
     
     # Process pages in the queue
-    while state.to_visit and state.total_crawled < state.max_pages:
-        url, depth = state.to_visit.pop(0)
+    while state.get('to_visit', []) and state.get('total_crawled', 0) < state.get('max_pages', 10):
+        url, depth = state['to_visit'].pop(0)
         
         # Skip if already visited
-        if url in state.visited_urls:
+        if url in state['visited_urls']:
             continue
         
         # Skip if depth exceeds limit
-        if depth > state.max_depth:
+        if depth > state.get('max_depth', 2):
             continue
         
         # Mark as visited
-        state.visited_urls.add(url)
+        state['visited_urls'].add(url)
         
         # Fetch the page
+        logger.info(f"Fetching: {url}")
         page = crawler.fetch_page(url)
         
         if page:
-            state.pages.append(page)
-            state.total_crawled += 1
+            state['pages'].append(page)
+            state['total_crawled'] = state.get('total_crawled', 0) + 1
             
             # Add new links to queue if not at max depth
-            if depth < state.max_depth:
+            if depth < state.get('max_depth', 2):
                 for link in page.links:
-                    if link not in state.visited_urls:
-                        state.to_visit.append((link, depth + 1))
+                    if link not in state['visited_urls']:
+                        state['to_visit'].append((link, depth + 1))
         else:
-            state.errors.append({
+            state['errors'].append({
                 'url': url,
                 'error': 'Failed to fetch page'
             })
     
-    state.status = "fetching_complete"
+    state['status'] = "fetching_complete"
     return state
