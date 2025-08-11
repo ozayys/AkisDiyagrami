@@ -28,8 +28,8 @@ def should_continue(state: dict) -> str:
 def create_crawler_workflow() -> StateGraph:
     """Create and configure the LangGraph workflow"""
     
-    # Create the workflow
-    workflow = StateGraph(CrawlerState)
+    # Create the workflow with dict state
+    workflow = StateGraph(dict)
     
     # Add nodes
     workflow.add_node("fetch", fetch_node)

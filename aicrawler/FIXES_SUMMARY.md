@@ -21,23 +21,19 @@ metadata: Dict[str, Any] = Field(default_factory=dict)
 ### 3. 'AddableValuesDict' object has no attribute 'total_crawled' Hatası
 **Problem:** LangGraph'ta node fonksiyonları state'i `AddableValuesDict` (dictionary benzeri bir nesne) olarak alır, ancak kod attribute erişimi kullanıyordu.
 
-**Çözüm:** Tüm LangGraph node fonksiyonları dictionary-based state erişimi kullanacak şekilde güncellendi:
+**Çözüm:** Tüm LangGraph node fonksiyonları dictionary-based state erişimi kullanacak şekilde güncellendi.
 
-1. **workflow.py:**
-   - `should_continue(state: dict)` - dictionary erişimi kullanır
-   - `CrawlerPipeline.crawl()` - state'i dict'e çevirir ve sonucu CrawlerState'e geri dönüştürür
+### 4. 'CrawlerState' object has no attribute 'get' Hatası
+**Problem:** `StateGraph(CrawlerState)` kullanıldığında LangGraph state'i CrawlerState nesnesi olarak geçirmeye çalışıyor, ama node fonksiyonlarımız dictionary bekliyor.
 
-2. **crawler.py:**
-   - `fetch_node(state: dict) -> dict` - dictionary erişimi kullanır
-   - `state['total_crawled']`, `state.get('max_pages', 10)` vb.
+**Çözüm:** `workflow.py` dosyasında:
+```python
+# Eski:
+workflow = StateGraph(CrawlerState)
 
-3. **cleaner.py:**
-   - `clean_node(state: dict) -> dict` - dictionary erişimi kullanır
-   - `state.get('pages', [])` ile güvenli erişim
-
-4. **storage.py:**
-   - `save_node(state: dict) -> dict` - dictionary erişimi kullanır
-   - Export fonksiyonları için geçici CrawlerState nesnesi oluşturur
+# Yeni:
+workflow = StateGraph(dict)
+```
 
 ## Yapılan Değişiklikler
 
@@ -47,6 +43,7 @@ metadata: Dict[str, Any] = Field(default_factory=dict)
    - `tuple[str, int]` yerine `Tuple[str, int]` kullanıldı
 
 2. **src/core/workflow.py:**
+   - `StateGraph(dict)` kullanımı
    - `should_continue` fonksiyonu dictionary state kullanır
    - `CrawlerPipeline` state dönüşümlerini yönetir
 
@@ -70,6 +67,8 @@ metadata: Dict[str, Any] = Field(default_factory=dict)
 
 ## Notlar
 
-- LangGraph'ta node fonksiyonları dictionary state kullanmalıdır
+- LangGraph'ta `StateGraph(dict)` kullanılmalıdır
+- Node fonksiyonları dictionary state kullanmalıdır
 - State attribute'larına `state['key']` veya `state.get('key', default)` ile erişilmelidir
 - `visited_urls` set/list dönüşümleri otomatik olarak yönetilir
+- CrawlerPipeline state'i dict ve CrawlerState arasında dönüştürür
