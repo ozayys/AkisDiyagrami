@@ -1,7 +1,7 @@
 """
 State definitions for the AICrawler LangGraph workflow
 """
-from typing import List, Dict, Set, Optional, Any
+from typing import List, Dict, Set, Optional, Any, Tuple
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -32,7 +32,7 @@ class CrawlerState(BaseModel):
     # Crawling state
     current_depth: int = 0
     visited_urls: Set[str] = Field(default_factory=set)
-    to_visit: List[tuple[str, int]] = Field(default_factory=list)  # (url, depth)
+    to_visit: List[Tuple[str, int]] = Field(default_factory=list)  # (url, depth)
     
     # Results
     pages: List[PageContent] = Field(default_factory=list)
@@ -41,6 +41,9 @@ class CrawlerState(BaseModel):
     # Status
     status: str = "initialized"
     total_crawled: int = 0
+    
+    # Metadata for storing additional information
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     
     def model_dump(self, **kwargs):
         """Override to handle set serialization"""
